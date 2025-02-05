@@ -206,13 +206,26 @@ class MafiaWikiScraperGUI(ctk.CTk):
         )
         dir_label.pack(side="left", padx=(0, 10))
         
+        # Create default directory in Documents
+        default_dir = str(Path.home() / "Documents" / "Mafia Wiki Scraper")
+        try:
+            os.makedirs(default_dir, exist_ok=True)
+        except:
+            default_dir = str(Path.home() / "Documents")
+            
         self.dir_entry = ctk.CTkEntry(
             dir_frame,
             width=400,
             placeholder_text="Select output directory..."
         )
         self.dir_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
-        self.dir_entry.insert(0, self.settings.get('last_directory', str(Path.home() / "MafiaWikiOutput")))
+        
+        # Use the saved directory from settings, or fall back to default
+        saved_dir = self.settings.get('last_directory', default_dir)
+        if not os.path.exists(saved_dir):
+            saved_dir = default_dir
+        self.dir_entry.insert(0, saved_dir)
+        self.output_dir.set(saved_dir)
         
         dir_button = ctk.CTkButton(
             dir_frame,
@@ -365,8 +378,10 @@ class MafiaWikiScraperGUI(ctk.CTk):
                 with open(self.settings_file, 'r') as f:
                     settings = json.load(f)
                     if "last_directory" in settings:
-                        self.output_dir.set(settings["last_directory"])
-                    return settings
+                        # Verify the directory exists
+                        if os.path.exists(settings["last_directory"]):
+                            self.output_dir.set(settings["last_directory"])
+                            return settings
         except Exception as e:
             print(f"Error loading settings: {e}")
         
@@ -375,7 +390,8 @@ class MafiaWikiScraperGUI(ctk.CTk):
         try:
             os.makedirs(default_dir, exist_ok=True)
         except:
-            default_dir = str(Path.home())
+            default_dir = str(Path.home() / "Documents")
+        
         return {"last_directory": default_dir}
 
     def save_settings(self):
