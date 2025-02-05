@@ -369,7 +369,14 @@ class MafiaWikiScraperGUI(ctk.CTk):
                     return settings
         except Exception as e:
             print(f"Error loading settings: {e}")
-        return {"last_directory": ""}
+        
+        # Default to Documents/Mafia Wiki Scraper
+        default_dir = str(Path.home() / "Documents" / "Mafia Wiki Scraper")
+        try:
+            os.makedirs(default_dir, exist_ok=True)
+        except:
+            default_dir = str(Path.home())
+        return {"last_directory": default_dir}
 
     def save_settings(self):
         """Save settings to file."""
@@ -458,7 +465,7 @@ class MafiaWikiScraperGUI(ctk.CTk):
         else:  # Linux and others
             subprocess.run(["xdg-open", str(output_path)])
 
-    async def start_scraping(self):
+    def start_scraping(self):
         """Start or stop the scraping process."""
         if self.scraping:
             self.scraping = False
@@ -478,10 +485,21 @@ class MafiaWikiScraperGUI(ctk.CTk):
                 return
 
         self.scraping = True
-        self.scrape_button.configure(text="Stop Scraping")
+        self.scrape_button.configure(text="Stop Scraping", state="disabled")  # Disable while starting
         
-        # Start the scraping process
-        asyncio.run_coroutine_threadsafe(self._run_scraper(), self.loop)
+        try:
+            # Reset progress bars
+            self.inspection_progress.set(0)
+            self.fetching_progress.set(0)
+            self.progress_bar.set(0)
+            self.update_status("Starting scraper...")
+            
+            # Start the scraping process in the background
+            asyncio.run_coroutine_threadsafe(self._run_scraper(), self.loop)
+        except Exception as e:
+            self.show_error(f"Failed to start scraping: {str(e)}")
+            self.scraping = False
+            self.scrape_button.configure(text="Start Scraping", state="normal")
 
     async def _run_scraper(self):
         """Run the scraper in the background."""
@@ -489,55 +507,58 @@ class MafiaWikiScraperGUI(ctk.CTk):
             self.show_error("Please select an output directory first.")
             return
 
-        self.scraping = True
-        self.scrape_button.configure(text="Stop Scraping", state="normal")
-        self.update()
-
         try:
+            self.update_status("Initializing scraper...")
             async with WikiScraper(self.base_url) as scraper:
-                print("Starting scraping process...")  # Debug
-                
                 # Get all internal links
+                self.update_status("Finding all wiki pages...")
                 total_links = 0
                 async for current, total in scraper.get_all_internal_links():
+                    if not self.scraping:  # Check if we should stop
+                        raise asyncio.CancelledError("Scraping cancelled by user")
                     total_links = total
-                    self.update_progress((current / total) * 100)
-                    self.update_status(f"Found {current} links in {self.base_url}")
-                print(f"Found {total_links} total links")  # Debug
+                    self.update_inspection_progress(current, total)
+
+                if total_links == 0:
+                    raise Exception("No pages found to scrape. Please check your internet connection.")
 
                 # Fetch all pages
+                self.update_status("Fetching pages...")
                 pages = []
                 async for current, total in scraper.fetch_pages_with_progress():
-                    self.update_progress((current / total) * 100)
-                    self.update_status(f"Fetching page {current} of {total}")
-                print(f"Fetched all pages")  # Debug
+                    if not self.scraping:  # Check if we should stop
+                        raise asyncio.CancelledError("Scraping cancelled by user")
+                    self.update_fetching_progress(current, total)
 
                 # Scrape all pages
+                self.update_status("Extracting content...")
                 scraped_pages = []
                 async for page in scraper.scrape_all_pages_with_progress():
+                    if not self.scraping:  # Check if we should stop
+                        raise asyncio.CancelledError("Scraping cancelled by user")
                     scraped_pages.append(page)
                     current = len(scraped_pages)
-                    total = total_links
-                    self.update_progress((current / total) * 100)
-                    self.update_status(f"Scraping page {current} of {total}")
-                print(f"Scraped {len(scraped_pages)} pages")  # Debug
-                print(f"Scraper results: {len(scraper.results)} pages")  # Debug
+                    self.update_progress((current / total_links) * 100)
+                    self.update_status(f"Scraping page {current} of {total_links}")
 
                 # Save results to file
+                self.update_status("Saving results...")
                 output_file = os.path.join(self.output_dir.get(), "mafia_wiki.json")
-                print(f"Saving to {output_file}")  # Debug
                 with open(output_file, "w", encoding="utf-8") as f:
                     json.dump(scraper.results, f, indent=4, ensure_ascii=False)
-                print(f"File saved successfully")  # Debug
 
                 self.current_output_file = output_file
-                self.update_status("Scraping completed successfully!")
+                self.open_button.configure(state="normal")
+                self.update_status(f"Scraping completed! Saved {len(scraped_pages)} pages to {output_file}")
                 self.play_sound('success')
 
+        except asyncio.CancelledError:
+            self.update_status("Scraping cancelled.")
         except Exception as e:
-            print(f"Error during scraping: {str(e)}")  # Debug
+            import traceback
+            print("Error during scraping:")
+            traceback.print_exc()
             self.show_error(str(e))
-            return
         finally:
             self.scraping = False
             self.scrape_button.configure(text="Start Scraping", state="normal")
