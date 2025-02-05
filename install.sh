@@ -27,11 +27,11 @@ if ! command -v python3 &> /dev/null; then
         echo "Installing Python..."
         if command -v apt-get &> /dev/null; then
             sudo apt-get update
-            sudo apt-get install -y python3 python3-pip
+            sudo apt-get install -y python3 python3-pip python3-venv
         elif command -v dnf &> /dev/null; then
-            sudo dnf install -y python3 python3-pip
+            sudo dnf install -y python3 python3-pip python3-venv
         elif command -v yum &> /dev/null; then
-            sudo yum install -y python3 python3-pip
+            sudo yum install -y python3 python3-pip python3-venv
         else
             echo "Could not install Python. Please install Python 3 manually."
             exit 1
@@ -45,25 +45,28 @@ echo "Using Python: $PYTHON_CMD"
 echo "Python version: $($PYTHON_CMD --version)"
 echo "Python architecture: $($PYTHON_CMD -c 'import platform; print(platform.machine())')"
 
-# Install/upgrade pip
-$PYTHON_CMD -m ensurepip --upgrade
-$PYTHON_CMD -m pip install --upgrade pip
+# Create virtual environment
+VENV_PATH="$HOME/.mafia_wiki_scraper_venv"
+echo "Creating virtual environment at $VENV_PATH..."
+$PYTHON_CMD -m venv "$VENV_PATH"
 
-# Uninstall existing packages to ensure clean installation
-echo "Removing any existing installations..."
-$PYTHON_CMD -m pip uninstall -y pillow customtkinter pygame mafia-wiki-scraper
+# Activate virtual environment
+source "$VENV_PATH/bin/activate"
 
-# Install required packages
+# Install/upgrade pip in the virtual environment
+python -m pip install --upgrade pip
+
+# Install required packages in the virtual environment
 echo "Installing required packages..."
-$PYTHON_CMD -m pip install --user --no-cache-dir customtkinter Pillow pygame
+python -m pip install customtkinter Pillow pygame
 
 # Install the scraper in development mode
 echo "Installing Mafia Wiki Scraper..."
-$PYTHON_CMD -m pip install --user -e .
+python -m pip install -e .
 
 # Verify installation
 echo "Verifying installation..."
-if $PYTHON_CMD -c "import mafia_wiki_scraper; print('Package found at:', mafia_wiki_scraper.__file__)" 2>/dev/null; then
+if python -c "import mafia_wiki_scraper; print('Package found at:', mafia_wiki_scraper.__file__)" 2>/dev/null; then
     echo "Package installed successfully!"
 else
     echo "Error: Package installation failed!"
@@ -88,14 +91,8 @@ exec 1> "\$HOME/Desktop/mafia_scraper_log.txt" 2>&1
 echo "Starting Mafia Wiki Scraper..."
 echo "Current directory: \$(pwd)"
 
-# Use the same Python that was used for installation
-PYTHON_PATH="$PYTHON_CMD"
-echo "Using Python at: \$PYTHON_PATH"
-echo "Python version: \$(\$PYTHON_PATH --version)"
-echo "Python architecture: \$(\$PYTHON_PATH -c 'import platform; print(platform.machine())')"
-
-# Add Homebrew and common Python paths to PATH
-export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:\$PATH"
+# Activate the virtual environment
+source "$VENV_PATH/bin/activate"
 
 # Get the actual path to the script
 SCRIPT_PATH=\$(dirname "\$0")
@@ -103,11 +100,12 @@ cd "\$SCRIPT_PATH/../../.."
 
 echo "Script path: \$SCRIPT_PATH"
 echo "Current directory after cd: \$(pwd)"
+echo "Python version: \$(python --version)"
 echo "Checking if mafia_wiki_scraper is installed..."
-\$PYTHON_PATH -c "import mafia_wiki_scraper; print('Package location:', mafia_wiki_scraper.__file__)"
+python -c "import mafia_wiki_scraper; print('Package location:', mafia_wiki_scraper.__file__)"
 
 echo "Running the scraper..."
-exec "\$PYTHON_PATH" -m mafia_wiki_scraper.gui
+exec python -m mafia_wiki_scraper.gui
 EOF
     
     chmod +x "$APP_PATH/Contents/MacOS/launcher"
@@ -151,7 +149,7 @@ else
     cat > ~/.local/share/applications/mafia-wiki-scraper.desktop << EOF
 [Desktop Entry]
 Name=Mafia Wiki Scraper
-Exec=$PYTHON_CMD -m mafia_wiki_scraper.gui
+Exec=bash -c "source $VENV_PATH/bin/activate && python -m mafia_wiki_scraper.gui"
 Type=Application
 Terminal=false
 Categories=Utility;
