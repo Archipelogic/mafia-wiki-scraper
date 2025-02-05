@@ -1,6 +1,6 @@
 # Mafia Wiki Scraper
 
-A tool to scrape content from the BNB Mafia GitBook wiki with a beautiful, easy-to-use interface.
+A tool to scrape content from the Mafia GitBook wiki with a beautiful, easy-to-use interface.
 
 ![Mafia Wiki Scraper Screenshot](screenshots/main.png)
 
@@ -44,8 +44,8 @@ The scraped content will be saved in:
 ### Installation
 
 ```bash
-git clone https://github.com/yourusername/mafia_wiki_scraper.git
-cd mafia_wiki_scraper
+git clone https://github.com/Archipelogic/mafia-wiki-scraper.git
+cd mafia-wiki-scraper
 pip install -e .
 ```
 

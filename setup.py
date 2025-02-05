@@ -65,7 +65,7 @@ setup(
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
     keywords="web-scraper, mafia, gitbook, gui",
-    url="https://github.com/archipelogic/mafia_wiki_scraper",
+    url="https://github.com/Archipelogic/mafia-wiki-scraper",
     classifiers=[
         "Development Status :: 4 - Beta",
         "Intended Audience :: End Users/Desktop",
