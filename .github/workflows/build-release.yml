@@ -1,0 +1,76 @@
+name: Build Release
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          
+      - name: Build DMG
+        run: |
+          chmod +x build_dmg.sh
+          ./build_dmg.sh
+          
+      - name: Upload DMG
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./dist/MafiaWikiScraper.dmg
+          asset_name: MafiaWikiScraper.dmg
+          asset_content_type: application/x-apple-diskimage
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          
+      - name: Install NSIS
+        run: |
+          choco install nsis -y
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install pyinstaller
+          
+      - name: Create Windows executable
+        run: |
+          mkdir dist\app
+          pyinstaller --noconsole --icon=mafia_wiki_scraper/resources/logo.ico --name="Mafia Wiki Scraper" mafia_wiki_scraper/gui.py
+          xcopy /E /I "dist\Mafia Wiki Scraper\*" "dist\app"
+          
+      - name: Build installer
+        run: |
+          & 'C:\Program Files (x86)\NSIS\makensis.exe' installer.nsi
+          
+      - name: Upload installer
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./dist/MafiaWikiScraper-Setup.exe
+          asset_name: MafiaWikiScraper-Setup.exe
+          asset_content_type: application/vnd.microsoft.portable-executable
