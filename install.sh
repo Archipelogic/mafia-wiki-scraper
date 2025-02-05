@@ -2,11 +2,25 @@
 
 echo "Installing Mafia Wiki Scraper..."
 
+# Function to get the best Python for M1/M2 Macs
+get_best_python() {
+    # Check for Homebrew Python first (preferred for M1/M2)
+    if command -v /opt/homebrew/bin/python3 &> /dev/null; then
+        echo "/opt/homebrew/bin/python3"
+    elif command -v /usr/local/bin/python3 &> /dev/null; then
+        echo "/usr/local/bin/python3"
+    else
+        echo "python3"
+    fi
+}
+
 # Check if Python is installed
 if ! command -v python3 &> /dev/null; then
     echo "Python is not installed."
     if [[ "$OSTYPE" == "darwin"* ]]; then
-        echo "Please install Python from: https://www.python.org/downloads/"
+        echo "Please install Python using Homebrew:"
+        echo "1. Install Homebrew from https://brew.sh"
+        echo "2. Run: brew install python"
         echo "After installing Python, run this script again."
         exit 1
     else
@@ -25,24 +39,31 @@ if ! command -v python3 &> /dev/null; then
     fi
 fi
 
-echo "Using Python: $(which python3)"
-echo "Python version: $(python3 --version)"
+# Get the best Python for this system
+PYTHON_CMD=$(get_best_python)
+echo "Using Python: $PYTHON_CMD"
+echo "Python version: $($PYTHON_CMD --version)"
+echo "Python architecture: $($PYTHON_CMD -c 'import platform; print(platform.machine())')"
 
 # Install/upgrade pip
-python3 -m ensurepip --upgrade
-python3 -m pip install --upgrade pip
+$PYTHON_CMD -m ensurepip --upgrade
+$PYTHON_CMD -m pip install --upgrade pip
+
+# Uninstall existing packages to ensure clean installation
+echo "Removing any existing installations..."
+$PYTHON_CMD -m pip uninstall -y pillow customtkinter pygame mafia-wiki-scraper
 
 # Install required packages
 echo "Installing required packages..."
-python3 -m pip install --user customtkinter Pillow pygame
+$PYTHON_CMD -m pip install --user --no-cache-dir customtkinter Pillow pygame
 
 # Install the scraper in development mode
 echo "Installing Mafia Wiki Scraper..."
-python3 -m pip install --user -e .
+$PYTHON_CMD -m pip install --user -e .
 
 # Verify installation
 echo "Verifying installation..."
-if python3 -c "import mafia_wiki_scraper" 2>/dev/null; then
+if $PYTHON_CMD -c "import mafia_wiki_scraper; print('Package found at:', mafia_wiki_scraper.__file__)" 2>/dev/null; then
     echo "Package installed successfully!"
 else
     echo "Error: Package installation failed!"
@@ -58,44 +79,35 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     mkdir -p "$APP_PATH/Contents/Resources"
     
     # Create the launcher script
-    cat > "$APP_PATH/Contents/MacOS/launcher" << 'EOF'
+    cat > "$APP_PATH/Contents/MacOS/launcher" << EOF
 #!/bin/bash
 
 # Set up logging
-exec 1> "$HOME/Desktop/mafia_scraper_log.txt" 2>&1
+exec 1> "\$HOME/Desktop/mafia_scraper_log.txt" 2>&1
 
 echo "Starting Mafia Wiki Scraper..."
-echo "Current directory: $(pwd)"
-echo "Python version: $(python3 --version)"
-echo "PATH: $PATH"
+echo "Current directory: \$(pwd)"
 
-# Get the directory where Python is installed
-PYTHON_PATH=$(which python3)
-if [ -z "$PYTHON_PATH" ]; then
-    echo "Error: Could not find python3"
-    PYTHON_PATH="/usr/local/bin/python3"
-fi
+# Use the same Python that was used for installation
+PYTHON_PATH="$PYTHON_CMD"
+echo "Using Python at: \$PYTHON_PATH"
+echo "Python version: \$(\$PYTHON_PATH --version)"
+echo "Python architecture: \$(\$PYTHON_PATH -c 'import platform; print(platform.machine())')"
 
-echo "Using Python at: $PYTHON_PATH"
+# Add Homebrew and common Python paths to PATH
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:\$PATH"
 
-# Add common Python paths to PATH
-export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+# Get the actual path to the script
+SCRIPT_PATH=\$(dirname "\$0")
+cd "\$SCRIPT_PATH/../../.."
 
-# Get the actual path to the script and the virtual environment
-SCRIPT_PATH=$(dirname "$0")
-cd "$SCRIPT_PATH/../../.."
-VENV_PATH="$HOME/Library/Python/3.12/lib/python/site-packages"
-
-echo "Script path: $SCRIPT_PATH"
-echo "Current directory after cd: $(pwd)"
+echo "Script path: \$SCRIPT_PATH"
+echo "Current directory after cd: \$(pwd)"
 echo "Checking if mafia_wiki_scraper is installed..."
-$PYTHON_PATH -c "import mafia_wiki_scraper; print('Package location:', mafia_wiki_scraper.__file__)"
-
-# Add the virtual environment to PYTHONPATH
-export PYTHONPATH="$VENV_PATH:$PYTHONPATH"
+\$PYTHON_PATH -c "import mafia_wiki_scraper; print('Package location:', mafia_wiki_scraper.__file__)"
 
 echo "Running the scraper..."
-"$PYTHON_PATH" -m mafia_wiki_scraper.gui
+exec "\$PYTHON_PATH" -m mafia_wiki_scraper.gui
 EOF
     
     chmod +x "$APP_PATH/Contents/MacOS/launcher"
@@ -139,7 +151,7 @@ else
     cat > ~/.local/share/applications/mafia-wiki-scraper.desktop << EOF
 [Desktop Entry]
 Name=Mafia Wiki Scraper
-Exec=python3 -m mafia_wiki_scraper.gui
+Exec=$PYTHON_CMD -m mafia_wiki_scraper.gui
 Type=Application
 Terminal=false
 Categories=Utility;
