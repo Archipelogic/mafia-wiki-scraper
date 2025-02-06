@@ -1,8 +1,8 @@
 # Mafia Wiki Scraper
 
-A desktop application to scrape and archive content from the Mafia Wiki.
+A desktop application that helps you download and archive content from the BNB Mafia Wiki.
 
-![Mafia Wiki Scraper Screenshot](docs/images/app_screenshot.png)
+![Mafia Wiki Scraper Screenshot](docs/images/gui_image.png)
 
 ## Features
 
