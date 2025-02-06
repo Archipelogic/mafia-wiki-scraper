@@ -64,6 +64,24 @@ python3 -m mafia_wiki_scraper.gui
 4. The progress bars will show you how far along the process is
 5. When it's done, you'll find all the downloaded files in your chosen output folder
 
+## Using the Downloaded Content
+
+The app saves the wiki content in a format that's perfect for using with AI language models. Here's how you can use it:
+
+### Claude.ai (Recommended)
+1. Go to [Claude.ai](https://claude.ai)
+2. Create a free account
+3. Upload the downloaded JSON files
+4. Ask Claude anything about BNB Mafia!
+
+### Other AI Options
+- [ChatGPT](https://chat.openai.com) - Paste sections of the content directly into your chat
+- [Perplexity](https://perplexity.ai) - Upload or paste the content
+- [Bard](https://bard.google.com) - Share the content through file upload
+- [Bing Chat](https://bing.com/chat) - Copy and paste relevant sections
+
+The downloaded content is organized in a way that makes it easy for AI to understand and answer questions about BNB Mafia's mechanics, strategies, and gameplay elements.
+
 ## Troubleshooting
 
 Having problems? Try these fixes:
