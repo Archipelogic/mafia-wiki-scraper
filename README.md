@@ -2,6 +2,8 @@
 
 A desktop application to scrape and archive content from the Mafia Wiki.
 
+![Mafia Wiki Scraper Screenshot](docs/images/app_screenshot.png)
+
 ## Features
 
 - Easy-to-use interface
